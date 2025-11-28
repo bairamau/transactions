@@ -25,7 +25,7 @@ function App() {
         query.data,
         groupings.row,
         groupings.column,
-        groupings.secondaryColumn ?? undefined
+        groupings.secondaryColumn ?? undefined,
       )
     : null;
 
@@ -119,7 +119,7 @@ function App() {
                       <th scope="col" key={`${primary}|${secondary}`}>
                         {secondary}
                       </th>
-                    ))
+                    )),
                   )}
                 </tr>
               </>

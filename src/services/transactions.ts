@@ -1,5 +1,3 @@
-import transactionsData from "./transactions.json";
-
 interface TransactionDTO {
   transaction_type: string;
   transaction_number: string;
@@ -27,8 +25,12 @@ const parseTransaction = (dto: TransactionDTO): Transaction => {
 };
 
 export const transactionsService = {
-  list(): Promise<Transaction[]> {
-    const dtos = transactionsData as TransactionDTO[];
-    return Promise.resolve(dtos.map(parseTransaction));
+  async list(): Promise<Transaction[]> {
+    const response = await fetch('/transactions');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const dtos = await response.json() as TransactionDTO[];
+    return dtos.map(parseTransaction);
   },
 };

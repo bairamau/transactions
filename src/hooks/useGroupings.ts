@@ -1,4 +1,4 @@
-import { useReducer } from "react";
+import { useReducer, useEffect } from "react";
 
 const ALL_FIELDS = ["transaction_type", "status", "year"] as const;
 
@@ -22,16 +22,16 @@ const groupingReducer = (
   switch (action.type) {
     case "SET_ROW": {
       const newRow = action.payload;
-      // If new row conflicts with primary column, pick first available
+
       if (newRow === state.column) {
         const available = ALL_FIELDS.filter((f) => f !== newRow);
         return {
           row: newRow,
           column: available[0],
-          secondaryColumn: null
+          secondaryColumn: null,
         };
       }
-      // If conflicts with secondary column, clear it
+
       if (newRow === state.secondaryColumn) {
         return { ...state, row: newRow, secondaryColumn: null };
       }
@@ -39,11 +39,11 @@ const groupingReducer = (
     }
     case "SET_COLUMN": {
       const newColumn = action.payload;
-      // Prevent setting column to same value as row
+
       if (newColumn === state.row) {
         return state;
       }
-      // Clear secondary column if it conflicts
+
       if (newColumn === state.secondaryColumn) {
         return { ...state, column: newColumn, secondaryColumn: null };
       }
@@ -51,7 +51,7 @@ const groupingReducer = (
     }
     case "SET_SECONDARY_COLUMN": {
       const newSecondary = action.payload;
-      // Prevent conflicts
+
       if (newSecondary === state.row || newSecondary === state.column) {
         return state;
       }
@@ -62,12 +62,36 @@ const groupingReducer = (
   }
 };
 
+const getInitialState = (): GroupingState => {
+  const params = new URLSearchParams(window.location.search);
+  const row = params.get("row") as GroupingField | null;
+  const column = params.get("column") as GroupingField | null;
+  const secondaryColumn = params.get("secondaryColumn") as GroupingField | null;
+
+  return {
+    row: row ?? "year",
+    column: column ?? "status",
+    secondaryColumn: secondaryColumn,
+  };
+};
+
 export const useGroupings = () => {
-  const [groupings, dispatch] = useReducer(groupingReducer, {
-    row: "year",
-    column: "status",
-    secondaryColumn: null,
-  });
+  const [groupings, dispatch] = useReducer(
+    groupingReducer,
+    undefined,
+    getInitialState,
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set("row", groupings.row);
+    params.set("column", groupings.column);
+    if (groupings.secondaryColumn) {
+      params.set("secondaryColumn", groupings.secondaryColumn);
+    }
+
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  }, [groupings]);
 
   const availableColumnFields = ALL_FIELDS.filter(
     (field) => field !== groupings.row,
