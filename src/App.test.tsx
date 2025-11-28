@@ -13,7 +13,6 @@ const server = setupServer(...handlers);
 beforeAll(() => server.listen());
 afterEach(() => {
   server.resetHandlers();
-  // Clear URL params to prevent test pollution
   window.history.replaceState(null, "", window.location.pathname);
 });
 afterAll(() => server.close());
