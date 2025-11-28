@@ -21,7 +21,12 @@ function App() {
   });
 
   const aggregatedData = query.data
-    ? getAggregations(query.data, groupings.row, groupings.column)
+    ? getAggregations(
+        query.data,
+        groupings.row,
+        groupings.column,
+        groupings.secondaryColumn ?? undefined
+      )
     : null;
 
   if (query.isLoading) return <main>Loading...</main>;
@@ -93,14 +98,42 @@ function App() {
       {aggregatedData && (
         <table>
           <thead>
-            <tr>
-              <th scope="col"></th>
-              {aggregatedData.columnValues.map((colVal) => (
-                <th scope="col" key={colVal}>
-                  {colVal}
-                </th>
-              ))}
-            </tr>
+            {aggregatedData.secondaryColumnValues ? (
+              // Two-level headers
+              <>
+                <tr>
+                  <th scope="col" rowSpan={2}></th>
+                  {aggregatedData.primaryColumnValues.map((primary) => (
+                    <th
+                      scope="col"
+                      colSpan={aggregatedData.secondaryColumnValues!.length}
+                      key={primary}
+                    >
+                      {primary}
+                    </th>
+                  ))}
+                </tr>
+                <tr>
+                  {aggregatedData.primaryColumnValues.map((primary) =>
+                    aggregatedData.secondaryColumnValues!.map((secondary) => (
+                      <th scope="col" key={`${primary}|${secondary}`}>
+                        {secondary}
+                      </th>
+                    ))
+                  )}
+                </tr>
+              </>
+            ) : (
+              // Single-level header
+              <tr>
+                <th scope="col"></th>
+                {aggregatedData.columnValues.map((col) => (
+                  <th scope="col" key={col.key}>
+                    {col.primary}
+                  </th>
+                ))}
+              </tr>
+            )}
           </thead>
           <tbody>
             {aggregatedData.rowValues.map((rowVal) => (
@@ -111,11 +144,11 @@ function App() {
                 >
                   {rowVal}
                 </th>
-                {aggregatedData.columnValues.map((colVal) => (
-                  <td key={colVal}>
+                {aggregatedData.columnValues.map((col) => (
+                  <td key={col.key}>
                     <span className="currency">$</span>
                     <span className="amount">
-                      {formatAmount(aggregatedData.cells[rowVal][colVal])}
+                      {formatAmount(aggregatedData.cells[rowVal][col.key])}
                     </span>
                   </td>
                 ))}
@@ -125,11 +158,11 @@ function App() {
           <tfoot>
             <tr>
               <th scope="row">Total</th>
-              {aggregatedData.columnValues.map((colVal) => (
-                <td key={colVal}>
+              {aggregatedData.columnValues.map((col) => (
+                <td key={col.key}>
                   <span className="currency">$</span>
                   <span className="amount">
-                    {formatAmount(aggregatedData.columnTotals[colVal])}
+                    {formatAmount(aggregatedData.columnTotals[col.key])}
                   </span>
                 </td>
               ))}

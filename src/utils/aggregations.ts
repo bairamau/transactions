@@ -1,54 +1,102 @@
 import type { Transaction } from "@/services/transactions";
 
+export type Column = {
+  key: string;
+  primary: string | number;
+  secondary?: string | number;
+};
+
 export type AggregatedData = {
   rowValues: (string | number)[];
-  columnValues: (string | number)[];
-  cells: Record<string | number, Record<string | number, number>>;
-  columnTotals: Record<string | number, number>;
+  primaryColumnValues: (string | number)[];
+  secondaryColumnValues: (string | number)[] | null;
+  columnValues: Column[];
+  cells: Record<string | number, Record<string, number>>;
+  columnTotals: Record<string, number>;
 };
 
 export const getAggregations = (
   transactions: Transaction[],
   rowField: keyof Transaction,
-  columnField: keyof Transaction,
+  primaryColumnField: keyof Transaction,
+  secondaryColumnField?: keyof Transaction,
 ): AggregatedData => {
+  // Extract unique values
   const uniqueRowValues = new Set<string | number>();
-  const uniqueColumnValues = new Set<string | number>();
+  const uniquePrimaryColumnValues = new Set<string | number>();
+  const uniqueSecondaryColumnValues = secondaryColumnField
+    ? new Set<string | number>()
+    : null;
+
   for (const t of transactions) {
     uniqueRowValues.add(t[rowField]);
-    uniqueColumnValues.add(t[columnField]);
+    uniquePrimaryColumnValues.add(t[primaryColumnField]);
+    if (secondaryColumnField && uniqueSecondaryColumnValues) {
+      uniqueSecondaryColumnValues.add(t[secondaryColumnField]);
+    }
   }
 
   const rowValues = Array.from(uniqueRowValues).sort();
-  const columnValues = Array.from(uniqueColumnValues).sort();
+  const primaryColumnValues = Array.from(uniquePrimaryColumnValues).sort();
+  const secondaryColumnValues = uniqueSecondaryColumnValues
+    ? Array.from(uniqueSecondaryColumnValues).sort()
+    : null;
 
-  // initialize with zeros
-  const cells: Record<string | number, Record<string | number, number>> = {};
-  for (const rowValue of rowValues) {
-    cells[rowValue] = {};
-    for (const colValue of columnValues) {
-      cells[rowValue][colValue] = 0;
+  // Generate column values
+  const columnValues: Column[] = [];
+  if (secondaryColumnValues) {
+    // Two-level
+    for (const primary of primaryColumnValues) {
+      for (const secondary of secondaryColumnValues) {
+        columnValues.push({
+          key: `${primary}|${secondary}`,
+          primary,
+          secondary,
+        });
+      }
+    }
+  } else {
+    // Single-level
+    for (const primary of primaryColumnValues) {
+      columnValues.push({
+        key: String(primary),
+        primary,
+      });
     }
   }
 
-  // aggregate
+  // Initialize cells
+  const cells: Record<string | number, Record<string, number>> = {};
+  for (const row of rowValues) {
+    cells[row] = {};
+    for (const col of columnValues) {
+      cells[row][col.key] = 0;
+    }
+  }
+
+  // Aggregate
   for (const t of transactions) {
-    const rowVal = t[rowField];
-    const colVal = t[columnField];
-    cells[rowVal][colVal] += t.amount;
+    const row = t[rowField];
+    const primary = t[primaryColumnField];
+    const secondary = secondaryColumnField ? t[secondaryColumnField] : undefined;
+    const key = secondary !== undefined ? `${primary}|${secondary}` : String(primary);
+    cells[row][key] += t.amount;
   }
 
-  const columnTotals: Record<string | number, number> = {};
-  for (const colVal of columnValues) {
+  // Column totals
+  const columnTotals: Record<string, number> = {};
+  for (const col of columnValues) {
     let sum = 0;
-    for (const rowVal of rowValues) {
-      sum += cells[rowVal][colVal];
+    for (const row of rowValues) {
+      sum += cells[row][col.key];
     }
-    columnTotals[colVal] = sum;
+    columnTotals[col.key] = sum;
   }
 
   return {
     rowValues,
+    primaryColumnValues,
+    secondaryColumnValues,
     columnValues,
     cells,
     columnTotals,
