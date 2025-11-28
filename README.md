@@ -28,4 +28,5 @@ npm run preview
 
 - Sensible UI for loading and error states
 - Abstraction over fetch that will handle authentication, django specific error formatting (maybe?), handle hanging requests and whatnot, or just pick something off the shelf
+- More team-friendly approach to css, like targeting each cell with its own classname, or using any css framework
 - Is there a better place to do aggregation related calculations? Backend? BFF?
